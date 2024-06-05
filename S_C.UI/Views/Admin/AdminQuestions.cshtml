@@ -1,0 +1,366 @@
+﻿@{
+    ViewData["Title"] = "AdminQuestions";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+@{
+    ViewData["Title"] = "Questions";
+}
+
+<h1>Sorular</h1>
+<div class="row">
+    <div class="col-md-8" id="divList">
+        <div id="progress">
+            <div class="table-responsive">
+                <a href="/Categories">Kategoriler</a> | <span id="catName"></span>
+                <table class="table table-bordered table-hover" id="tbQuestionList">
+                    <thead>
+                        <tr>
+
+                            <th>Başlığı</th>
+                            <th>Soru</th>
+                            <th>Durumu</th>
+                            <th>Kayıt T.</th>
+                            <th>Düzenleme T.</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4" id="divAddUpdate">
+        <h4 id="editHeader">Soru Ekle</h4>
+        <div class="card shadow mb-4" id="surveycard">
+            <div class="card-body">
+                <div class="b-2">
+                    <label>Soru başlığı</label>
+                    <input type="text" class="form-control" id="txtTitle" />
+                    <input type="hidden" id="txtId" />
+                </div>
+                <div class="b-2">
+                    <label>Soru</label>
+                    <input type="text" class="form-control" id="txtBody" />
+                    <input type="hidden" id="txtId" />
+                </div>
+
+                <div class="b-2">
+                    <label>Soru Kategorisi</label>
+                    <select class="form-select" id="cbCategory">
+                    </select>
+
+                </div>
+                <div class="b-2">
+                    <input type="checkbox" class="form-check-inline" id="cbIsActive" />
+                    <label>Aktif</label>
+                </div>
+                <div class="mb-2">
+                    <a id="btnSave" class="btn btn-primary ">Kaydet</a>
+                    <a id="btnEdit" class="btn btn-primary ">Düzenle</a>
+                    <a id="btnDelete" class="btn btn-danger ">Sil</i></a>
+                    <a id="btnCancel" class="btn btn-warning ">Vazgeç</a>
+                </div>
+
+                <div id="result"></div>
+            </div>
+        </div>
+
+
+
+
+
+
+    </div>
+
+</div>
+
+@section Scripts{
+    <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.js"></script>
+    <script>
+
+        $(document).ready(function () {
+            var ApiBaseUrl = "@ViewBag.ApiBaseUrl";
+            var catId = "@ViewBag.CatId";
+            QuestionList();
+            CategoriList();
+            CategoryById();
+            $("#btnEdit").hide();
+            $("#btnDelete").hide();
+            $("#btnCancel").hide();
+            $("#surveycard").show();
+            $("#questioncard").hide();
+
+
+            function CategoriList() {
+                $.ajax({
+                    url: ApiBaseUrl + "Categories",
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        var opt = "";
+                        $("#cbCategory").empty();
+                        $.each(data, function (i, item) {
+
+                            if (catId == item.id) {
+                                opt = '<option value="' + item.id + '" selected>' + item.name + '</option>';
+                            } else {
+                                opt = '<option value="' + item.id + '">' + item.name + '</option>';
+                            }
+
+                            $("#cbCategory").append(opt);
+                        });
+
+                    },
+                    error: function () { }
+                });
+            }
+            function CategoryById() {
+                $.ajax({
+                    url: ApiBaseUrl + "Categories/" + catId,
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#catName").html("<b>" + data.name + "<b>");
+                    },
+                    error: function () { }
+                });
+            }
+            function QuestionList() {
+                $.ajax({
+                    url: ApiBaseUrl + "Categories/" + catId + "/Questions",
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        QuestionListToTable(data);
+                    },
+                    error: function () { }
+                });
+            }
+            function QuestionListToTable(data) {
+                $("#tbQuestionList tbody").empty();
+                var tr = '';
+                $.each(data, function (i, item) {
+                    var bg = item.isActive ? 'bg-success' : 'bg-danger';
+
+                    tr += '<tr><td>' + item.title + '</td><td>' + item.body + '</td><td><span class="badge ' + bg + '">' + (item.isActive ? 'Aktif' : 'Pasif') + '</span></td><td>' + FormatDate(item.createdAt) + '</td><td>' + FormatDate(item.updatedAt) + '</td>'
+
+
+                    if (userRoles.includes("Admin")) {
+
+                        tr += '<td><a href="/Answers/' + item.id + '" class="btn btn-primary btn-sm">Cevapla</a><button class="btn btn-primary btn-circle btn-sm  edit ms-2" id=' + item.id + '>Düzenle</button></td>';
+
+
+                    }
+                    else if (!userRoles.includes("Admin")) {
+                        if (item.isActive) {
+                            tr += '<td><a href="/Answer/' + item.id + '" class="btn btn-primary btn-sm ">Soruyu Cevapla</a></td>';
+                        }
+
+                    }
+
+                    tr += '</tr>';
+                });
+
+                $("#tbQuestionList tbody").append(tr);
+
+                if (!userRoles.includes("Admin")) {
+
+                    $("#divAddUpdate").hide();
+                    $("#divList").removeClass("col-md-8").addClass("col-md-12");
+                    $(".edit").hide();
+
+
+                }
+
+            }
+            function FormatDate(d) {
+                var date = new Date(d);
+                var day = date.getDate() > 9 ? date.getDate() : '0' + date.getDate();
+                var mount = date.getMonth() > 9 ? date.getMonth() : '0' + date.getMonth();
+                var year = date.getFullYear();
+
+                var hour = date.getHours() > 9 ? date.getHours() : '0' + date.getHours();
+                var minute = date.getMinutes() > 9 ? date.getMinutes() : '0' + date.getMinutes();
+                var second = date.getSeconds() > 9 ? date.getSeconds() : '0' + date.getSeconds();
+
+                var fd = day + "." + mount + "." + year + " " + hour + ":" + minute + ":" + second;
+                return fd
+            }
+
+
+            $("#btnSave").click(function () {
+                var userId = "";
+                var title = $("#txtTitle").val();
+                var body = $("#txtBody").val();
+                var categoryId = $("#cbCategory").val();
+                var isActive = $("#cbIsActive").is(":checked");
+                var question = new Object();
+                question.Title = title;
+                question.Body = body;
+                question.CategoryId = categoryId;
+                question.IsActive = isActive;
+                question.UserId = userId;
+
+                $.ajax({
+                    url: ApiBaseUrl + "Questions",
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    data: JSON.stringify(question),
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            QuestionList();
+                        }
+                        else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#result").fadeOut(3000);
+                    },
+                    error: function () { }
+                });
+
+            });
+            $(document).on("click", ".edit", function () {
+
+                var id = $(this).attr("id");
+                $.ajax({
+                    url: ApiBaseUrl + "Questions/" + id,
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#txtId").val(data.id);
+                        $("#txtTitle").val(data.title);
+                        $("#txtBody").val(data.body);
+                        $("#cbCategory").val(data.categoryId);
+                        $("#cbIsActive").prop("checked", data.isActive);
+
+                        $("#btnEdit").show();
+                        $("#btnDelete").show();
+                        $("#btnCancel").show();
+                        $("#btnSave").hide();
+
+                        $("#editHeader").html("Soru Düzenle - Sil");
+                    },
+                    error: function () { }
+                });
+
+
+            });
+
+
+
+
+            $("#btnCancel").click(function () {
+                $("#txtId").val("");
+                $("#txtTitle").val("");
+                $("#txtBody").val("");
+                $("#cbIsActive").prop("checked", false);
+                $("#btnEdit").hide();
+                $("#btnDelete").hide();
+                $("#btnCancel").hide();
+                $("#btnSave").show();
+                $("#editHeader").html("Soru Ekle");
+
+
+            });
+
+
+            $("#btnEdit").click(function () {
+                var userId = "";
+                var id = $("#txtId").val();
+                var title = $("#txtTitle").val();
+                var body = $("#txtBody").val();
+                var categoryId = $("#cbCategory").val();
+                var isActive = $("#cbIsActive").is(":checked");
+                var question = new Object();
+                question.Id = id;
+                question.Title = title;
+                question.Body = body;
+                question.CAtegoryId = categoryId;
+                question.IsActive = isActive;
+                question.UserId = userId;
+
+                $.ajax({
+                    url: ApiBaseUrl + "Questions",
+                    method: "PUT",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    data: JSON.stringify(question),
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            QuestionList();
+                        }
+                        else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#result").fadeOut(3000);
+                    },
+                    error: function () { }
+                });
+
+
+            });
+
+            $("#btnDelete").click(function () {
+                console.log("sil");
+                var id = $("#txtId").val();
+                $.ajax({
+                    url: ApiBaseUrl + "Questions/" + id,
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            QuestionList();
+                        }
+                        else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#result").fadeOut(3000);
+                    },
+                    error: function () { }
+                });
+
+
+            });
+        });
+
+
+
+
+
+
+
+    </script>
+            }

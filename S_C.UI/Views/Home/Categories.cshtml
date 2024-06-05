@@ -1,0 +1,387 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soru Cevap Portalı</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f2f4f7;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+        }
+
+        .navbar {
+            background-color: #5a67d8;
+        }
+
+        .navbar-brand {
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+            .navbar-brand:hover {
+                color: #e2e8f0;
+            }
+
+        .container {
+            margin-top: 50px;
+        }
+
+        .table {
+            background-color: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+            .table th, .table td {
+                vertical-align: middle;
+                padding: 15px;
+            }
+
+            .table th {
+                background-color: #5a67d8;
+                color: #fff;
+            }
+
+        .badge {
+            border-radius: 12px;
+            padding: 5px 10px;
+            font-size: 0.875rem;
+        }
+
+        .form-control {
+            border-radius: 20px;
+            margin-bottom: 15px;
+        }
+
+        .form-check-inline {
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            border-radius: 25px;
+            padding: 8px 20px;
+            font-size: 1rem;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .btn-primary {
+            background-color: #6b73d2;
+            border-color: #6b73d2;
+        }
+
+            .btn-primary:hover {
+                background-color: #5a67d8;
+                border-color: #5a67d8;
+            }
+
+        .btn-secondary {
+            background-color: #a0aec0;
+            border-color: #a0aec0;
+        }
+
+            .btn-secondary:hover {
+                background-color: #718096;
+                border-color: #718096;
+            }
+
+        .btn-danger {
+            background-color: #e53e3e;
+            border-color: #e53e3e;
+        }
+
+            .btn-danger:hover {
+                background-color: #c53030;
+                border-color: #c53030;
+            }
+
+        .btn-sm {
+            padding: 5px 10px;
+        }
+
+        #divAddUpdate {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        #divList {
+            margin-bottom: 20px;
+        }
+
+        #result {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .alert {
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8" id="divList">
+                <h4>Kategoriler</h4>
+                <table class="table table-striped" id="tbCategoryList">
+                    <thead>
+                        <tr>
+                            <th>Id</th>
+                            <th>Adı</th>
+                            <th>Durumu</th>
+                            <th>Kayıt T.</th>
+                            <th>Düzenleme T.</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="col-md-4" id="divAddUpdate">
+                <h4 id="editHeader">Kategori Ekle</h4>
+                <div class="mb-2">
+                    <label>Kategori Adı</label>
+                    <input type="text" class="form-control" id="txtName" />
+                    <input type="hidden" id="txtId" />
+                </div>
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="cbIsActive" />
+                    <label class="form-check-label">Aktif</label>
+                </div>
+                <div class="mb-2">
+                    <button class="btn btn-primary btn-sm" id="btnSave">Kaydet</button>
+                    <button class="btn btn-primary btn-sm" id="btnEdit">Düzenle</button>
+                    <button class="btn btn-danger btn-sm" id="btnDelete">Sil</button>
+                    <button class="btn btn-secondary btn-sm" id="btnCancel">Vazgeç</button>
+                </div>
+                <div id="result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            var ApiBaseUrl = "@ViewBag.ApiBaseUrl";
+            var token = localStorage.getItem("token");
+            if (token == "" || token == null) {
+                location.href = "/Login";
+                return false;
+            }
+
+            CategoryList();
+            $("#btnEdit").hide();
+            $("#btnDelete").hide();
+
+            function CategoryList() {
+                $.ajax({
+                    url: ApiBaseUrl + "Categories",
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        CategoryListToTable(data);
+                    },
+                    error: function (e) {
+                        if (e.status == 401) {
+                            localStorage.removeItem("token");
+                            location.href = "/Login";
+                        }
+                    }
+                });
+            }
+
+            function CategoryListToTable(data) {
+                $("#tbCategoryList tbody").empty();
+                var tr = '';
+                $.each(data, function (i, item) {
+                    var bg = item.isActive ? 'bg-success' : 'bg-danger';
+
+                    tr += '<tr><td>' + item.id + '</td><td>' + item.name + '</td><td><span class="badge ' + bg + '">' + (item.isActive ? 'Aktif' : 'Pasif') + '</span></td><td>' + FormatDate(item.created) + '</td><td>' + FormatDate(item.updated) + '</td><td><a href="/Questions/' + item.id + '" class="btn btn-primary btn-sm">Sorular</a><button class="btn btn-primary btn-sm ms-2 edit" id=' + item.id + '>Düzenle</button></td></tr>';
+                });
+
+                $("#tbCategoryList tbody").append(tr);
+
+                if (!userRoles.includes("Admin")) {
+                    $("#divAddUpdate").hide();
+                    $("#divList").removeClass("col-md-8").addClass("col-md-12");
+                    $(".edit").hide();
+                }
+            }
+
+            function FormatDate(d) {
+                var date = new Date(d);
+                var day = date.getDate() > 9 ? date.getDate() : '0' + date.getDate();
+                var month = date.getMonth() + 1 > 9 ? date.getMonth() + 1 : '0' + (date.getMonth() + 1);
+                var year = date.getFullYear();
+
+                var hour = date.getHours() > 9 ? date.getHours() : '0' + date.getHours();
+                var minute = date.getMinutes() > 9 ? date.getMinutes() : '0' + date.getMinutes();
+                var second = date.getSeconds() > 9 ? date.getSeconds() : '0' + date.getSeconds();
+
+                var fd = day + "." + month + "." + year + " " + hour + ":" + minute + ":" + second;
+                return fd;
+            }
+
+            $("#btnSave").click(function () {
+                var name = $("#txtName").val();
+                var isActive = $("#cbIsActive").is(":checked");
+                var category = { Name: name, IsActive: isActive };
+
+                $.ajax({
+                    url: ApiBaseUrl + "Categories",
+                    method: "POST",
+                    data: JSON.stringify(category),
+                    contentType: "application/json",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            CategoryList();
+                        } else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#txtName").val("");
+                        $("#cbIsActive").prop("checked", false);
+                    },
+                    error: function (e) {
+                        if (e.status == 401) {
+                            localStorage.removeItem("token");
+                            location.href = "/Login";
+                        }
+                    }
+                });
+            });
+
+            $(document).on("click", ".edit", function () {
+                $("#btnEdit").show();
+                $("#btnDelete").show();
+                $("#btnSave").hide();
+                $("#btnCancel").show();
+
+                var id = $(this).attr("id");
+
+                $.ajax({
+                    url: ApiBaseUrl + "Categories/" + id,
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#txtId").val(data.id);
+                        $("#txtName").val(data.name);
+                        $("#cbIsActive").prop("checked", data.isActive);
+                        $("#editHeader").text("Kategori Düzenle");
+                    },
+                    error: function (e) {
+                        if (e.status == 401) {
+                            localStorage.removeItem("token");
+                            location.href = "/Login";
+                        }
+                    }
+                });
+            });
+
+            $("#btnEdit").click(function () {
+                var id = $("#txtId").val();
+                var name = $("#txtName").val();
+                var isActive = $("#cbIsActive").is(":checked");
+                var category = { Id: id, Name: name, IsActive: isActive };
+
+                $.ajax({
+                    url: ApiBaseUrl + "Categories/" + id,
+                    method: "PUT",
+                    data: JSON.stringify(category),
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            CategoryList();
+                        } else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#txtName").val("");
+                        $("#cbIsActive").prop("checked", false);
+                        $("#editHeader").text("Kategori Ekle");
+                        $("#btnEdit").hide();
+                        $("#btnDelete").hide();
+                        $("#btnSave").show();
+                    },
+                    error: function (e) {
+                        if (e.status == 401) {
+                            localStorage.removeItem("token");
+                            location.href = "/Login";
+                        }
+                    }
+                });
+            });
+
+            $("#btnDelete").click(function () {
+                var id = $("#txtId").val();
+                $.ajax({
+                    url: ApiBaseUrl + "Categories/" + id,
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            CategoryList();
+                        } else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#txtName").val("");
+                        $("#cbIsActive").prop("checked", false);
+                        $("#editHeader").text("Kategori Ekle");
+                        $("#btnEdit").hide();
+                        $("#btnDelete").hide();
+                        $("#btnSave").show();
+                    },
+                    error: function (e) {
+                        if (e.status == 401) {
+                            localStorage.removeItem("token");
+                            location.href = "/Login";
+                        }
+                    }
+                });
+            });
+
+            $("#btnCancel").click(function () {
+                $("#txtName").val("");
+                $("#cbIsActive").prop("checked", false);
+                $("#editHeader").text("Kategori Ekle");
+                $("#btnEdit").hide();
+                $("#btnDelete").hide();
+                $("#btnSave").show();
+            });
+        });
+    </script>
+</body>
+</html>

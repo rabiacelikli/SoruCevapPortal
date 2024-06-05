@@ -1,0 +1,151 @@
+﻿@{
+    ViewData["Title"] = "AdminGetListQuestions";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+@{
+    ViewData["Title"] = "GetListQuestions";
+}
+
+<h1>Sorular</h1>
+<div class="row">
+    <div class="col-md-12">
+        <div id="progress">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="tbQuestionList">
+                    <thead>
+                        <tr>
+                            <th>Soru Başlığı</th>
+                            <th>Soru</th>
+                            <th>Kategori</th>
+                            <th>Durum</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts{
+    <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.js"></script>
+    <script>
+        $(document).ready(function () {
+            var ApiBaseUrl = "@ViewBag.ApiBaseUrl";
+            var token = localStorage.getItem("token");
+            if (token == "" || token == null) {
+                location.href = "/Login";
+                return false;
+            }
+            QuestionList();
+            CategoryList();
+
+            function CategoryList() {
+                $.ajax({
+                    url: ApiBaseUrl + "Categories",
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        console.log(data);
+                        $("#category").empty();
+                        $.each(data, function (i, item) {
+                            var opt = '<option value="' + item.id + '">' + item.name + '</option>';
+                            $("#category").append(opt);
+                        });
+                    },
+                    error: function () { }
+                });
+            }
+
+            function QuestionList() {
+                $.ajax({
+                    url: ApiBaseUrl + "Questions",
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    contentType: "application/json",
+                    success: function (data) {
+                        QuestionListToTable(data);
+                    },
+                    error: function () { }
+                });
+            }
+
+            function QuestionListToTable(data) {
+                $("#tbQuestionList tbody").empty();
+                var tr = '';
+                $.each(data, function (i, item) {
+                    var bg = item.isActive ? 'bg-success' : 'bg-danger';
+                    tr += '<tr><td>' + item.title + '</td><td>' + item.body + '</td><td>' + item.category + '</td><td><span class="badge ' + bg + '">' + (item.isActive ? 'Aktif' : 'Pasif') + '</span></td>';
+                    tr += '<td><button class="btn btn-danger btn-sm btnDelete" data-id="' + item.id + '">Sil</button> ';
+                    tr += '<button class="btn btn-info btn-sm btnAnswer" data-id="' + item.id + '">Cevapla</button></td></tr>';
+                });
+                $("#tbQuestionList tbody").append(tr);
+            }
+
+            $("#btnSave").click(function () {
+                var question = {
+                    title: $("#title").val(),
+                    body: $("#body").val(),
+                    categoryId: $("#category").val(),
+                    isActive: $("#isActive").val() === "true"
+                };
+                $.ajax({
+                    url: ApiBaseUrl + "Questions",
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + token
+                    },
+                    data: JSON.stringify(question),
+                    contentType: "application/json",
+                    success: function (data) {
+                        alert(data.message);
+                        if (data.status) {
+                            QuestionList();
+                            $("#questionForm")[0].reset();
+                        }
+                    },
+                    error: function () { }
+                });
+            });
+
+            $(document).on("click", ".btnDelete", function () {
+                var id = $(this).data("id");
+                if (confirm("Bu soruyu silmek istediğinizden emin misiniz?")) {
+                    $.ajax({
+                        url: ApiBaseUrl + "Questions/" + id,
+                        method: "DELETE",
+                        headers: {
+                            "Authorization": "Bearer " + token
+                        },
+                        contentType: "application/json",
+                        success: function (data) {
+                            alert(data.message);
+                            if (data.status) {
+                                QuestionList();
+                            }
+                        },
+                        error: function () { }
+                    });
+                }
+            });
+
+            $(document).on("click", ".btnAnswer", function () {
+                var id = $(this).data("id");
+                window.location.href = '/Answer/' + id;
+            });
+
+            $("#btnCancel").click(function () {
+                $("#questionForm")[0].reset();
+                $("#editHeader").html("Soru Ekle");
+            });
+        });
+    </script>
+}

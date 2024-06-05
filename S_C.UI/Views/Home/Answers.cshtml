@@ -1,0 +1,316 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soru Cevap Portalı</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f2f4f7;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+        }
+
+        .navbar {
+            background-color: #5a67d8;
+        }
+
+        .navbar-brand {
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+            .navbar-brand:hover {
+                color: #e2e8f0;
+            }
+
+        .container {
+            margin-top: 50px;
+        }
+
+        .table {
+            background-color: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+            .table th, .table td {
+                vertical-align: middle;
+                padding: 15px;
+            }
+
+            .table th {
+                background-color: #5a67d8;
+                color: #fff;
+            }
+
+        .badge {
+            border-radius: 12px;
+            padding: 5px 10px;
+            font-size: 0.875rem;
+        }
+
+        .form-control {
+            border-radius: 20px;
+            margin-bottom: 15px;
+        }
+
+        .form-check-inline {
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            border-radius: 25px;
+            padding: 8px 20px;
+            font-size: 1rem;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .btn-primary {
+            background-color: #6b73d2;
+            border-color: #6b73d2;
+        }
+
+            .btn-primary:hover {
+                background-color: #5a67d8;
+                border-color: #5a67d8;
+            }
+
+        .btn-secondary {
+            background-color: #a0aec0;
+            border-color: #a0aec0;
+        }
+
+            .btn-secondary:hover {
+                background-color: #718096;
+                border-color: #718096;
+            }
+
+        .btn-danger {
+            background-color: #e53e3e;
+            border-color: #e53e3e;
+        }
+
+            .btn-danger:hover {
+                background-color: #c53030;
+                border-color: #c53030;
+            }
+
+        .btn-sm {
+            padding: 5px 10px;
+        }
+
+        #divAddUpdate {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        #divList {
+            margin-bottom: 20px;
+        }
+
+        #result {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .alert {
+            border-radius: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="questionTitle">Soru Başlığı</h1>
+        <p id="questionBody">Soru içeriği burada gösterilecek...</p>
+
+        <h3>Cevaplar</h3>
+        <table class="table" id="responseTable">
+            <thead>
+                <tr>
+                    <th>Cevap</th>
+                    <th>Kullanıcı ID</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Cevaplar burada listelenecek -->
+            </tbody>
+        </table>
+
+        <div class="form-group">
+            <textarea id="responseBody" class="form-control" placeholder="Cevabınızı yazın..."></textarea>
+        </div>
+        <button id="btnSave" class="btn btn-primary">Cevabı Kaydet</button>
+        <button id="btnEdit" class="btn btn-warning" style="display: none;">Cevabı Düzenle</button>
+        <button id="btnCancel" class="btn btn-secondary" style="display: none;">İptal</button>
+
+        <input type="hidden" id="userId" value="current-user-id"> <!-- Mevcut kullanıcının ID'si burada olacak -->
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            var ApiBaseUrl = "@ViewBag.ApiBaseUrl";
+            var token = localStorage.getItem("token");
+            if (token == "" || token == null) {
+                location.href = "/Login";
+                return false;
+            }
+
+            var questionId = 1; // Assuming you have the questionId value here
+            var userId = $("#userId").val();
+
+            // Load question details
+            function loadQuestion(questionId) {
+                $.ajax({
+                    url: ApiBaseUrl + "Question/" + questionId,
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (data) {
+                        $('#questionTitle').text(data.title);
+                        $('#questionBody').text(data.body);
+                        loadAnswers(questionId);
+                    },
+                    error: function (error) {
+                        console.error("Error loading question: ", error);
+                    }
+                });
+            }
+
+            // Load answers for the question
+            function loadAnswers(questionId) {
+                $.ajax({
+                    url: ApiBaseUrl + "Answer",
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (data) {
+                        $('#responseTable tbody').empty();
+                        data.forEach(function (answer) {
+                            $('#responseTable tbody').append(`
+                                        <tr data-id="${answer.id}">
+                                            <td>${answer.body}</td>
+                                            <td>${answer.userId}</td>
+                                            <td>
+                                                <button class="btn btn-warning btnEdit" data-id="${answer.id}">Düzenle</button>
+                                                <button class="btn btn-danger btnDelete" data-id="${answer.id}">Sil</button>
+                                            </td>
+                                        </tr>
+                                    `);
+                        });
+                    },
+                    error: function (error) {
+                        console.error("Error loading answers: ", error);
+                    }
+                });
+            }
+
+            // Save new answer
+            $('#btnSave').click(function () {
+                var answer = {
+                    body: $('#responseBody').val(),
+                    questionId: questionId,
+                    userId: userId
+                };
+                $.ajax({
+                    url: ApiBaseUrl + "Answer",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(answer),
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (result) {
+                        alert(result.message);
+                        $('#responseBody').val('');
+                        loadAnswers(questionId);
+                    },
+                    error: function (error) {
+                        console.error("Error saving answer: ", error);
+                    }
+                });
+            });
+
+            // Edit answer
+            $('#responseTable').on('click', '.btnEdit', function () {
+                var answerId = $(this).data('id');
+                $.ajax({
+                    url: ApiBaseUrl + "Answer/" + answerId,
+                    type: "GET",
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (answer) {
+                        $('#responseBody').val(answer.body);
+                        $('#btnSave').hide();
+                        $('#btnEdit, #btnCancel').show().data('id', answer.id);
+                    },
+                    error: function (error) {
+                        console.error("Error loading answer: ", error);
+                    }
+                });
+            });
+
+            // Update answer
+            $('#btnEdit').click(function () {
+                var answerId = $(this).data('id');
+                var answer = {
+                    id: answerId,
+                    body: $('#responseBody').val(),
+                    userId: userId
+                };
+                $.ajax({
+                    url: ApiBaseUrl + "Answer",
+                    type: "PUT",
+                    contentType: "application/json",
+                    data: JSON.stringify(answer),
+                    headers: { "Authorization": "Bearer " + token },
+                    success: function (result) {
+                        alert(result.message);
+                        $('#responseBody').val('');
+                        $('#btnSave').show();
+                        $('#btnEdit, #btnCancel').hide();
+                        loadAnswers(questionId);
+                    },
+                    error: function (error) {
+                        console.error("Error updating answer: ", error);
+                    }
+                });
+            });
+
+            // Cancel edit
+            $('#btnCancel').click(function () {
+                $('#responseBody').val('');
+                $('#btnSave').show();
+                $('#btnEdit, #btnCancel').hide();
+            });
+
+            // Delete answer
+            $('#responseTable').on('click', '.btnDelete', function () {
+                if (confirm("Cevabı silmek istediğinizden emin misiniz?")) {
+                    var answerId = $(this).data('id');
+                    $.ajax({
+                        url: ApiBaseUrl + "Answer/" + answerId,
+                        type: "DELETE",
+                        headers: { "Authorization": "Bearer " + token },
+                        success: function (result) {
+                            alert(result.message);
+                            loadAnswers(questionId);
+                        },
+                        error: function (error) {
+                            console.error("Error deleting answer: ", error);
+                        }
+                    });
+                }
+            });
+
+            // Initial load
+            loadQuestion(questionId);
+        });
+    </script>
+</body>
+</html>

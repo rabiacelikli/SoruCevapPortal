@@ -1,0 +1,47 @@
+body {
+    font-family: 'Nunito', sans-serif;
+    background-color: #f8f9fa;
+}
+
+h2.display-4 {
+    color: #343a40;
+    text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.1);
+}
+
+.table {
+    background-color: #ffffff;
+    border-radius: 10px;
+}
+
+    .table th {
+        background-color: #343a40;
+        color: white;
+    }
+
+.table-hover tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.card-body {
+    background-color: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-block {
+    border-radius: 20px;
+}
+
+.alert {
+    margin-top: 10px;
+    display: none;
+}
+
+hr.my-4 {
+    border-top: 2px solid #343a40;
+}
